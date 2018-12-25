@@ -3,14 +3,16 @@
 #include<errno.h>
 #include<string.h>
 #include<unistd.h>
+#include<fcntl.h>
 
 #include<sys/types.h>
 #include<sys/socket.h>
+#include<sys/stat.h>
 
 #include<netinet/in.h>
 
 int main(){
-	char welcome_msg[] = "Welcome to the server";
+	char file_name[1024] = {'\0'};
 	/*Creating socket*/
 	int sockFd_server = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockFd_server == -1){
@@ -23,7 +25,7 @@ int main(){
 	memset(&server_address,0,sizeof(server_address));
 
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(9002);  
+	server_address.sin_port = htons(9000);  
 	server_address.sin_addr.s_addr = INADDR_ANY;
 
 	/*Bind the socket to particular IP and port number*/
@@ -31,12 +33,23 @@ int main(){
 
 	/*Start listening to the requests from clients*/
 	listen(sockFd_server,5);
-
+	int sockFd_client;
 	/*Accept the connection requests from the client*/
-	int sockFd_client = accept(sockFd_server,NULL,NULL);
+	sockFd_client = accept(sockFd_server,NULL,NULL);
 
-	/*Send the data to client socket */
-	send(sockFd_client,welcome_msg,sizeof(welcome_msg),0);
+	//Recieve the name of the file to be copied to client
+	recv(sockFd_client,&file_name,sizeof(file_name),0);
+
+	//Open the file to be copied and start sending the data
+
+	char server_msg[1024] = {'\0'};
+	/*Check if the file asked for, exists*/
+	struct stat fileStat;
+	if(stat(file_name,&fileStat) < 0){
+		strcpy(server_msg,"ERROR:not a valid path"); 
+		send(sockFd_client,server_msg,strlen(server_msg),0);
+	}
 	close(sockFd_server);
+	close(sockFd_client);
 	return (0);
 }
